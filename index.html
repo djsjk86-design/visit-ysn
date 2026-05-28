@@ -447,6 +447,42 @@
         document.getElementById('visitForm').addEventListener('submit', function(e) {
             e.preventDefault(); // 기본 새로고침 방지
 
+             // 예약 후 방문을 선택했는데 예약 경로를 선택하지 않은 경우 막기
+            const reservationStatus = document.querySelector('input[name="reservationStatus"]:checked');
+            const reservePath = document.querySelector('input[name="reservePath"]:checked');
+
+            if (reservationStatus && reservationStatus.value === "예약 후 방문" && !reservePath) {
+                alert("예약 후 방문을 선택하셨다면 예약 경로를 선택해주세요.");
+                return;
+            }
+
+            // 예약 경로에서 기타를 선택했는데 직접 입력하지 않은 경우 막기
+            const reserveEtcInput = document.getElementById('reserveEtcInput');
+
+            if (reservePath && reservePath.value === "기타" && reserveEtcInput.value.trim() === "") {
+                alert("기타 예약 경로를 직접 입력해주세요.");
+                reserveEtcInput.focus();
+                return;
+            }
+
+            // 인터넷검색을 선택했는데 검색 키워드를 선택하지 않은 경우 막기
+            const inbound = document.querySelector('input[name="inbound"]:checked');
+            const searchKeyword = document.querySelector('input[name="searchKeyword"]:checked');
+
+            if (inbound && inbound.value === "인터넷검색" && !searchKeyword) {
+                alert("인터넷검색을 선택하셨다면 검색 키워드를 선택해주세요.");
+                return;
+            }
+
+            // 검색 키워드에서 기타를 선택했는데 직접 입력하지 않은 경우 막기
+            const etcInput = document.getElementById('etcInput');
+
+            if (searchKeyword && searchKeyword.value === "기타" && etcInput.value.trim() === "") {
+                alert("기타 검색어를 직접 입력해주세요.");
+                etcInput.focus();
+                return;
+            }
+
             const overlay = document.getElementById('statusOverlay');
             const loadingState = document.getElementById('loadingState');
             const successState = document.getElementById('successState');
