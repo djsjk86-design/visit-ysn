@@ -161,6 +161,13 @@
             background: #e03d4b;
         }
 
+        .submit-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+            box-shadow: none;
+            transform: none;
+        }
+
         /* 저장 중 로딩 및 완료 화면 스타일 */
         .overlay {
             display: none;
@@ -293,7 +300,8 @@
                         <div class="time-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 10px; gap: 8px;">
                             <div class="selectable-box"><input type="radio" name="searchKeyword" value="연신내 헬스장"><span class="box-label" style="padding:12px; font-size:13px;">#연신내 헬스장</span></div>
                             <div class="selectable-box"><input type="radio" name="searchKeyword" value="연신내역 헬스장"><span class="box-label" style="padding:12px; font-size:13px;">#연신내역 헬스장</span></div>
-                            <div class="selectable-box"><input type="radio" name="searchKeyword" value=연신내역 PT"><span class="box-label" style="padding:12px; font-size:13px;">#연신내역 PT</span></div>
+                            <div class="selectable-box"><input type="radio" name="searchKeyword" value="연신내 PT"><span class="box-label" style="padding:12px; font-size:13px;">#연신내 PT</span></div>
+                            <div class="selectable-box"><input type="radio" name="searchKeyword" value="근처 헬스장"><span class="box-label" style="padding:12px; font-size:13px;">#근처 헬스장</span></div>
                             <div class="selectable-box"><input type="radio" name="searchKeyword" value="기타" id="etcRadio"><span class="box-label" style="padding:12px; font-size:13px;">기타 검색어</span></div>
                         </div>
                         <input type="text" id="etcInput" name="etcInput" class="input-control" placeholder="검색어를 직접 입력해주세요" style="padding:12px; font-size:14px; display:none;">
@@ -306,6 +314,13 @@
                     <div class="selectable-box">
                         <input type="radio" name="inbound" value="문앞전단" onclick="toggleSearchInput(false)">
                         <span class="box-label">🏠 집/건물 문 앞에 붙은 전단지를 봤어요</span>
+                    </div>
+                    <div class="selectable-box">
+                        <input type="radio" name="inbound" value="기타" id="inboundEtcRadio" onclick="toggleSearchInput(false); toggleInboundEtcInput(true);">
+                        <span class="box-label">✏️ 기타</span>
+                    </div>
+                    <div class="search-detail" id="inboundEtcBox">
+                        <input type="text" id="inboundEtcInput" name="inboundEtcInput" class="input-control" placeholder="알게 된 경로를 직접 입력해주세요" style="padding:12px; font-size:14px;">
                     </div>
                 </div>
             </div>
@@ -369,6 +384,7 @@
     <script>
         // 대표님이 보내주신 마법의 구글 주소 연결
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbypgeMhFKmYTwxz5obOvp7-WBBwmHOpEFZ4FevXgpluznxJbgbWRuMVwFu255iFclZO6w/exec";
+        const FORM_TOKEN = "boundgym-yeonsinnae-visit-20260612";
 // ▼▼▼ 4번 문항: 연락처 자동 하이픈(-) 스크립트 ▼▼▼
         document.getElementById('userPhone').addEventListener('input', function (e) {
             // 1. 입력된 값에서 숫자만 쏙 골라냅니다.
@@ -391,14 +407,33 @@
         // 기존 6번(검색 경로) 스크립트 
         function toggleSearchInput(show) {
             const detailBox = document.getElementById('searchDetailBox');
+            const inboundEtcBox = document.getElementById('inboundEtcBox');
+            const inboundEtcInput = document.getElementById('inboundEtcInput');
             if(show) {
                 detailBox.style.display = 'block';
+                inboundEtcBox.style.display = 'none';
+                inboundEtcInput.value = '';
             } else {
                 detailBox.style.display = 'none';
+                inboundEtcBox.style.display = 'none';
+                inboundEtcInput.value = '';
                 const radios = document.getElementsByName('searchKeyword');
                 radios.forEach(r => r.checked = false);
                 document.getElementById('etcInput').style.display = 'none';
                 document.getElementById('etcInput').value = '';
+            }
+        }
+
+        function toggleInboundEtcInput(show) {
+            const inboundEtcBox = document.getElementById('inboundEtcBox');
+            const inboundEtcInput = document.getElementById('inboundEtcInput');
+
+            if (show) {
+                inboundEtcBox.style.display = 'block';
+                inboundEtcInput.focus();
+            } else {
+                inboundEtcBox.style.display = 'none';
+                inboundEtcInput.value = '';
             }
         }
 
@@ -443,9 +478,24 @@
         });
         // ▲▲▲ 추가 완료 ▲▲▲
 
+        const visitForm = document.getElementById('visitForm');
+        const submitButton = visitForm.querySelector('.submit-btn');
+        const submitButtonText = submitButton.textContent;
+        let isSubmitting = false;
+
+        function resetSubmitState() {
+            isSubmitting = false;
+            submitButton.disabled = false;
+            submitButton.textContent = submitButtonText;
+        }
+
         // 폼 제출 시 구글 시트로 연동하는 대망의 코드
-        document.getElementById('visitForm').addEventListener('submit', function(e) {
+        visitForm.addEventListener('submit', function(e) {
             e.preventDefault(); // 기본 새로고침 방지
+
+            if (isSubmitting) {
+                return;
+            }
 
              // 예약 후 방문을 선택했는데 예약 경로를 선택하지 않은 경우 막기
             const reservationStatus = document.querySelector('input[name="reservationStatus"]:checked');
@@ -468,9 +518,16 @@
             // 인터넷검색을 선택했는데 검색 키워드를 선택하지 않은 경우 막기
             const inbound = document.querySelector('input[name="inbound"]:checked');
             const searchKeyword = document.querySelector('input[name="searchKeyword"]:checked');
+            const inboundEtcInput = document.getElementById('inboundEtcInput');
 
             if (inbound && inbound.value === "인터넷검색" && !searchKeyword) {
                 alert("인터넷검색을 선택하셨다면 검색 키워드를 선택해주세요.");
+                return;
+            }
+
+            if (inbound && inbound.value === "기타" && inboundEtcInput.value.trim() === "") {
+                alert("기타 경로를 직접 입력해주세요.");
+                inboundEtcInput.focus();
                 return;
             }
 
@@ -483,50 +540,90 @@
                 return;
             }
 
+            const phoneInput = document.getElementById('userPhone');
+            const phoneNumber = phoneInput.value.replace(/[^0-9]/g, '');
+
+            if (phoneNumber.length < 10 || phoneNumber.length > 11) {
+                alert("연락처를 정확히 입력해주세요. 예: 010-1234-5678");
+                phoneInput.focus();
+                return;
+            }
+
             const overlay = document.getElementById('statusOverlay');
             const loadingState = document.getElementById('loadingState');
             const successState = document.getElementById('successState');
+
+            isSubmitting = true;
+            submitButton.disabled = true;
+            submitButton.textContent = '저장 중입니다...';
 
             // 1. 로딩 화면 띄우기
             overlay.style.display = 'flex';
             loadingState.style.display = 'block';
             successState.style.display = 'none';
+            overlay.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
             // 2. 고객이 입력한 데이터 모으기
             const formData = new FormData(this);
             const searchParams = new URLSearchParams(formData);
+            searchParams.append('formToken', FORM_TOKEN);
 
             // 3. 구글 앱스 스크립트로 전송하기
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
+
             fetch(GOOGLE_API_URL, {
                 method: 'POST',
                 body: searchParams,
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                signal: controller.signal
+            })
+            .then(response => response.text())
+            .then(text => {
+                clearTimeout(timeoutId);
+                try {
+                    return JSON.parse(text);
+                } catch (error) {
+                    console.error('Invalid JSON response:', text);
+                    throw new Error('구글 앱스 스크립트 응답을 읽을 수 없습니다. 배포 설정을 확인해주세요.');
                 }
             })
-            .then(response => response.json())
             .then(data => {
                 if (data.result === 'success') {
                     // 4. 전송 성공 시 완료 축하 화면으로 전환!
                     loadingState.style.display = 'none';
                     successState.style.display = 'block';
+                    successState.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     
                     // 5초 뒤에 다음 고객을 위해 화면 원상복구
                     setTimeout(() => {
                         overlay.style.display = 'none';
                         document.getElementById('visitForm').reset();
                         toggleSearchInput(false);
+                        toggleInboundEtcInput(false);
                         toggleReservation(false); // 폼 리셋 시 새로 만든 5번 숨김처리
+                        resetSubmitState();
                     }, 5000);
                 } else {
-                    alert('저장 중 오류가 발생했습니다. 직원에게 문의해주세요. 에러: ' + data.error);
+                    alert('저장 중 오류가 발생했습니다. 직원에게 문의해주세요. 에러: ' + (data.error || '알 수 없는 오류'));
                     overlay.style.display = 'none';
+                    resetSubmitState();
                 }
             })
             .catch(error => {
+                clearTimeout(timeoutId);
                 console.error('Error:', error);
-                alert('네트워크 연결 확인이 필요합니다.');
+
+                if (error.name === 'AbortError') {
+                    alert('저장 시간이 너무 오래 걸립니다. 인터넷 연결 또는 앱스 스크립트 배포 상태를 확인해주세요.');
+                } else {
+                    alert(error.message || '네트워크 연결 확인이 필요합니다.');
+                }
+
                 overlay.style.display = 'none';
+                resetSubmitState();
             });
         });
     </script>
